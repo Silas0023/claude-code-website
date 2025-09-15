@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Zap,
@@ -20,6 +20,7 @@ import {
 import DashboardSidebar from '@/components/DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { apiService, SubscriptionPlan } from '@/lib/api';
 
 interface Plan {
   id: string;
@@ -39,79 +40,86 @@ interface Plan {
 }
 
 export default function UpgradePage() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSubscriptionPlans = async () => {
+      try {
+        const response = await apiService.getSubscriptionPlans();
+        if (response.code === 200 || response.code === 0) {
+          setSubscriptionPlans(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subscription plans:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubscriptionPlans();
+  }, []);
 
   const handleLogout = () => {
     logout();
     router.push('/');
   };
 
-  const plans: Plan[] = [
-    {
-      id: 'free',
-      name: 'FREE',
-      icon: <Sparkles className="w-6 h-6" />,
-      price: '¥0',
+  const convertToDisplayPlans = (): Plan[] => {
+    const basePlans: Plan[] = [
+      {
+        id: 'free',
+        name: 'FREE',
+        icon: <Sparkles className="w-6 h-6" />,
+        price: '¥0',
+        period: '/月',
+        description: '适合个人开发者体验使用',
+        gradient: 'from-gray-400 to-gray-600',
+        features: [
+          { text: '每日基础额度', included: true },
+          { text: '基础 AI 模型访问', included: true },
+          { text: '代码搜索功能', included: true },
+          { text: '社区支持', included: true },
+          { text: '高级 AI 模型', included: false },
+          { text: 'API 访问权限', included: false },
+          { text: '优先技术支持', included: false },
+          { text: '团队协作功能', included: false }
+        ]
+      }
+    ];
+
+    // Convert API subscription plans to display format
+    const apiPlans: Plan[] = subscriptionPlans.map((plan, index) => ({
+      id: plan.subscriptionType,
+      name: plan.subscriptionType.toUpperCase(),
+      icon: index === 0 ? <Zap className="w-6 h-6" /> : <Crown className="w-6 h-6" />,
+      price: `¥${plan.monthlyPrice}`,
       period: '/月',
-      description: '适合个人开发者体验使用',
-      gradient: 'from-gray-400 to-gray-600',
+      description: plan.description || '专业套餐',
+      gradient: index === 0 ? 'from-orange-500 to-orange-600' : 'from-purple-600 to-pink-600',
+      isPopular: index === 0,
+      badge: index === 0 ? '最受欢迎' : undefined,
       features: [
-        { text: '每日 3,000 积分额度', included: true },
-        { text: '基础 AI 模型访问', included: true },
-        { text: '代码搜索功能', included: true },
-        { text: '社区支持', included: true },
-        { text: '高级 AI 模型', included: false },
-        { text: 'API 访问权限', included: false },
-        { text: '优先技术支持', included: false },
-        { text: '团队协作功能', included: false }
-      ]
-    },
-    {
-      id: 'pro',
-      name: 'PRO',
-      icon: <Zap className="w-6 h-6" />,
-      price: billingPeriod === 'monthly' ? '¥99' : '¥990',
-      originalPrice: billingPeriod === 'yearly' ? '¥1188' : undefined,
-      period: billingPeriod === 'monthly' ? '/月' : '/年',
-      description: '适合专业开发者和小型团队',
-      gradient: 'from-orange-500 to-orange-600',
-      isPopular: true,
-      badge: '最受欢迎',
-      features: [
-        { text: '每日 50,000 积分额度', included: true },
-        { text: '高级 AI 模型访问', included: true },
-        { text: '无限代码搜索', included: true },
-        { text: 'API 访问权限', included: true },
+        { text: `每日 ${plan.dailyCostLimit} 成本限制`, included: true },
+        { text: `每日 ${plan.tokenLimit} 令牌限制`, included: true },
+        { text: `并发限制 ${plan.concurrencyLimit}`, included: true },
+        { text: `速率限制 ${plan.rateLimitRequests} 请求/${plan.rateLimitWindow}s`, included: true },
+        { text: plan.enableModelRestriction ? '模型限制' : '无模型限制', included: !plan.enableModelRestriction },
+        { text: plan.enableClientRestriction ? '客户端限制' : '无客户端限制', included: !plan.enableClientRestriction },
         { text: '优先技术支持', included: true },
-        { text: '自定义工作流', included: true },
-        { text: '团队协作功能 (5人)', included: true },
-        { text: '专属客户经理', included: false }
+        { text: '高级功能访问', included: true }
       ]
-    },
-    {
-      id: 'enterprise',
-      name: 'ENTERPRISE',
-      icon: <Crown className="w-6 h-6" />,
-      price: '联系销售',
-      period: '',
-      description: '为大型团队和企业定制',
-      gradient: 'from-purple-600 to-pink-600',
-      features: [
-        { text: '无限积分额度', included: true },
-        { text: '所有 AI 模型访问', included: true },
-        { text: '无限代码搜索', included: true },
-        { text: 'API 无限调用', included: true },
-        { text: '7×24 专属支持', included: true },
-        { text: '完全自定义工作流', included: true },
-        { text: '无限团队成员', included: true },
-        { text: '专属客户经理', included: true }
-      ]
-    }
-  ];
+    }));
+
+    return [...basePlans, ...apiPlans];
+  };
+
+  const plans: Plan[] = loading ? [] : convertToDisplayPlans();
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
@@ -176,12 +184,20 @@ export default function UpgradePage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">您当前的套餐</h2>
-                  <p className="text-sm text-gray-600 mt-0.5">FREE 免费版 - 每日 3,000 积分额度</p>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    {user?.userInfo?.subscribeType || 'FREE'} - 
+                    {user?.userStats ? ` 每日 ${user.userStats.limits.dailyCostLimit} 成本限制` : ' 免费版'}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">今日已用</p>
-                <p className="text-2xl font-bold text-gray-900">1,234 / 3,000</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {user?.userStats 
+                    ? `${user.userStats.limits.currentDailyCost} / ${user.userStats.limits.dailyCostLimit}`
+                    : '0 / 3,000'
+                  }
+                </p>
               </div>
             </div>
           </motion.div>

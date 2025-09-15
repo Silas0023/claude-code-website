@@ -227,3 +227,58 @@ body {
     color: #94a3b8;
   }
 }
+
+/* Dashboard specific styles */
+.dashboard-card {
+  @apply bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard-card {
+    @apply bg-gray-900 border-gray-700;
+  }
+}
+
+/* Metric card styles */
+.metric-card {
+  @apply bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300;
+}
+
+@media (prefers-color-scheme: dark) {
+  .metric-card {
+    @apply bg-gray-800 border-gray-700;
+  }
+}
+
+/* Progress bar animations */
+@keyframes progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--progress-width);
+  }
+}
+
+.animate-progress {
+  animation: progress-fill 2s ease-out forwards;
+}
+
+/* Chart container styles */
+.chart-container {
+  @apply relative overflow-hidden;
+}
+
+/* Status indicator pulse */
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-status-pulse {
+  animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

@@ -12,25 +12,29 @@ import {
   Sun,
   Smartphone,
   Mail,
-  Key,
   Save,
   Check,
   AlertCircle,
-  Camera
-,
-  Menu
+  Camera,
+  Menu,
+  TrendingUp,
+  Clock,
+  Users,
+  Copy,
+  Gift
 } from 'lucide-react';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, setServerUrl, getServerUrl } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('overview');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [saved, setSaved] = useState(false);
+  const [serverUrl, setServerUrlState] = useState(getServerUrl());
 
   const [profile, setProfile] = useState({
     name: user?.name || '',
@@ -59,12 +63,21 @@ export default function SettingsPage() {
   };
 
   const handleSave = () => {
+    if (activeTab === 'server') {
+      setServerUrl(serverUrl);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleServerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setServerUrlState(e.target.value);
+  };
+
   const tabs = [
+    { id: 'overview', label: '仪表板概览', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'profile', label: '个人资料', icon: <User className="w-4 h-4" /> },
+    { id: 'server', label: '服务器设置', icon: <Settings className="w-4 h-4" /> },
     { id: 'notifications', label: '通知设置', icon: <Bell className="w-4 h-4" /> },
     { id: 'security', label: '安全设置', icon: <Shield className="w-4 h-4" /> },
     { id: 'appearance', label: '外观设置', icon: <Sun className="w-4 h-4" /> },
@@ -72,7 +85,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex overflow-hidden">
       <DashboardSidebar
         onLogout={handleLogout}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -115,52 +128,213 @@ export default function SettingsPage() {
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
             {/* Sidebar Navigation */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-orange-50 text-orange-600'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-3 backdrop-blur-sm">
+                <div className="space-y-1">
+                  {tabs.map(tab => (
+                    <motion.button
+                      key={tab.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        activeTab === tab.id
+                          ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-200'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      {tab.icon}
+                      <span className="hidden sm:inline">{tab.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Content Area */}
             <div className="lg:col-span-3">
+              {activeTab === 'overview' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  {/* Usage Statistics */}
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-gray-900">当前积分</h2>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Clock className="w-4 h-4" />
+                        <span>补充: 今天剩余</span>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-600">今日剩余</span>
+                        <span className="text-2xl font-bold text-gray-900">2,000 / 2,000</span>
+                      </div>
+                      
+                      <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                        <div className="bg-gradient-to-r from-green-400 via-orange-400 to-red-400 h-3 rounded-full" style={{width: '100%'}}></div>
+                      </div>
+                      
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>0:00</span>
+                        <span>8:00</span>
+                        <span>12:00</span>
+                        <span>18:00</span>
+                        <span>24:00</span>
+                      </div>
+                      
+                      <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-100">
+                        <p className="text-sm text-green-700 font-medium">FREE用户每天免费体验300积分</p>
+                        <p className="text-xs text-green-600 mt-1">补充周期: 0 积分/小时 • 上次补充时间: -</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Plans */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { name: 'FREE', price: '免费试用', features: ['体验Claude Code的基础功能', '适合轻度使用和初次体验'], color: 'gray', button: '当前计划' },
+                      { name: 'PRO', price: '¥50/月', features: ['享受Claude 4 Sonnet模型', '满足日常开发'], color: 'orange', button: '立即升级' },
+                      { name: 'MAX', price: '¥200/月', features: ['为重度用户设计，深度体验用Claude 4.1 Opus'], color: 'purple', button: '立即升级' },
+                      { name: 'ULTRA', price: '¥500/月', features: ['为企业级应用打造，享受Claude 4倍速'], color: 'blue', button: '立即升级' }
+                    ].map((plan, index) => (
+                      <motion.div
+                        key={plan.name}
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
+                      >
+                        <div className="text-center">
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">{plan.name}</h3>
+                          <p className="text-sm text-gray-600 mb-4">{plan.price}</p>
+                          <div className="space-y-2 mb-6">
+                            {plan.features.map((feature, idx) => (
+                              <p key={idx} className="text-xs text-gray-500">{feature}</p>
+                            ))}
+                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+                              index === 0 
+                                ? 'bg-gray-100 text-gray-700'
+                                : `bg-gradient-to-r ${plan.color === 'orange' ? 'from-orange-500 to-orange-600' : plan.color === 'purple' ? 'from-purple-500 to-purple-600' : 'from-blue-500 to-blue-600'} text-white hover:shadow-lg`
+                            }`}
+                          >
+                            {plan.button}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Invite Section */}
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Gift className="w-6 h-6 text-orange-500" />
+                      <h2 className="text-xl font-bold text-gray-900">邀请好友</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">我的邀请人</label>
+                            <div className="flex items-center gap-3">
+                              <input 
+                                type="text" 
+                                value="9ROTYY" 
+                                readOnly 
+                                className="flex-1 px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-gray-700 backdrop-blur-sm"
+                              />
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <Copy className="w-4 h-4 text-gray-600" />
+                              </motion.button>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">我的邀请链接</label>
+                            <div className="flex items-center gap-3">
+                              <input 
+                                type="text" 
+                                value="https://www.accodemirror.com/register?invitecode=9ROTYY" 
+                                readOnly 
+                                className="flex-1 px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-gray-700 text-sm backdrop-blur-sm"
+                              />
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="p-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                <Copy className="w-4 h-4 text-gray-600" />
+                              </motion.button>
+                            </div>
+                          </div>
+                          
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white font-medium rounded-lg hover:shadow-lg transition-all"
+                          >
+                            生成邀请码
+                          </motion.button>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-xl p-6 border border-orange-100">
+                        <h3 className="font-semibold text-gray-900 mb-3">我邀请的用户</h3>
+                        <div className="text-center py-8">
+                          <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-500">还没有邀请用户</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {activeTab === 'profile' && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">个人资料</h2>
 
                   {/* Avatar Section */}
                   <div className="flex items-center gap-6 mb-8">
                     <div className="relative">
-                      <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-pink-400 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                      <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
                         {profile.name.charAt(0) || 'U'}
                       </div>
-                      <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all">
+                      <motion.button 
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-all"
+                      >
                         <Camera className="w-4 h-4 text-gray-600" />
-                      </button>
+                      </motion.button>
                     </div>
                     <div>
-                      <button className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 font-medium rounded-lg hover:shadow-md transition-all"
+                      >
                         更换头像
-                      </button>
+                      </motion.button>
                       <p className="text-sm text-gray-500 mt-2">支持 JPG、PNG，最大 2MB</p>
                     </div>
                   </div>
@@ -175,7 +349,7 @@ export default function SettingsPage() {
                         type="text"
                         value={profile.name}
                         onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm"
                       />
                     </div>
 
@@ -187,7 +361,7 @@ export default function SettingsPage() {
                         type="email"
                         value={profile.email}
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm"
                       />
                     </div>
 
@@ -200,11 +374,15 @@ export default function SettingsPage() {
                           type="tel"
                           value={profile.phone}
                           readOnly
-                          className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500"
+                          className="flex-1 px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-gray-500 backdrop-blur-sm"
                         />
-                        <button className="px-4 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 font-medium rounded-xl hover:shadow-md transition-all"
+                        >
                           更换号码
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
 
@@ -216,8 +394,59 @@ export default function SettingsPage() {
                         value={profile.bio}
                         onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                         rows={3}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all resize-none"
+                        className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all resize-none backdrop-blur-sm"
                       />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'server' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900 mb-6">服务器设置</h2>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        API 服务器地址
+                      </label>
+                      <input
+                        type="url"
+                        value={serverUrl}
+                        onChange={handleServerUrlChange}
+                        className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm"
+                        placeholder="http://127.0.0.1:8088"
+                      />
+                      <p className="text-sm text-gray-500 mt-2">
+                        配置后端API服务器的地址，包括协议和端口号
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex items-start gap-3">
+                        <Globe className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-1">服务器配置说明</h3>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• 确保服务器地址可访问</li>
+                            <li>• 支持的API接口：登录、发送验证码、获取套餐</li>
+                            <li>• 默认地址：http://127.0.0.1:8088</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-medium text-gray-900 mb-3">当前连接状态</h3>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-600">已连接</span>
+                        <span className="text-gray-500">- {serverUrl}</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -227,7 +456,7 @@ export default function SettingsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">通知设置</h2>
 
@@ -315,7 +544,7 @@ export default function SettingsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">安全设置</h2>
 
@@ -352,7 +581,7 @@ export default function SettingsPage() {
                       <select
                         value={security.sessionTimeout}
                         onChange={(e) => setSecurity({ ...security, sessionTimeout: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm"
                       >
                         <option value="15">15 分钟</option>
                         <option value="30">30 分钟</option>
@@ -386,7 +615,7 @@ export default function SettingsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">外观设置</h2>
 
@@ -428,7 +657,7 @@ export default function SettingsPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100/50 p-6 backdrop-blur-sm"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 mb-6">语言和地区</h2>
 
@@ -437,7 +666,7 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         语言
                       </label>
-                      <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all">
+                      <select className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm">
                         <option>简体中文</option>
                         <option>English</option>
                         <option>日本語</option>
@@ -448,7 +677,7 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         时区
                       </label>
-                      <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all">
+                      <select className="w-full px-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:bg-white transition-all backdrop-blur-sm">
                         <option>UTC+8 北京时间</option>
                         <option>UTC+9 东京时间</option>
                         <option>UTC+0 伦敦时间</option>
@@ -459,6 +688,7 @@ export default function SettingsPage() {
                 </motion.div>
               )}
             </div>
+          </div>
           </div>
         </main>
       </div>

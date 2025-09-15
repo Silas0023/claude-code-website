@@ -4,39 +4,63 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Terminal,
-  Zap,
-  Shield,
-  Code,
   TrendingUp,
   Clock,
   CheckCircle,
   AlertCircle,
-  ArrowRight,
   Sparkles,
   Copy,
   Check,
-  ExternalLink,
-  Users,
-  Gift,
-  Gauge,
-  Activity,
-  Menu
+  Menu,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { apiService, ModelUsageStats } from '@/lib/api';
+import PieChart from '@/components/PieChart';
 
 export default function DashboardPage() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [modelStats, setModelStats] = useState<ModelUsageStats[]>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [period, setPeriod] = useState<'daily' | 'monthly'>('monthly');
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login');
     }
   }, [user, isLoading, router]);
+
+  const fetchModelStats = async () => {
+    // 使用实际的API ID，可能是用户的API key或ID
+    const apiId = user?.userStats?.id || user?.userInfo?.id || 'e5507f6f-c267-4991-979d-84f919fa6410';
+    
+    setStatsLoading(true);
+    try {
+      console.log('Fetching model stats for:', apiId, period);
+      const response = await apiService.getUserModelStats(apiId.toString(), period);
+      console.log('Model stats response:', response);
+      
+      // 解析嵌套的响应结构
+      if (response.code === 200 && response.data && response.data.success) {
+        setModelStats(response.data.data);
+        console.log('Model stats set:', response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch model stats:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.userStats?.id || user?.userInfo?.id) {
+      fetchModelStats();
+    }
+  }, [user?.userStats?.id, user?.userInfo?.id, period]);
 
   const handleLogout = () => {
     logout();
@@ -100,258 +124,453 @@ export default function DashboardPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-gray-50">
-          {/* Stats Cards Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {/* 简洁的顶部统计卡片 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-orange-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-orange-100"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm text-gray-600">本月使用次数</span>
-                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
-                  <TrendingUp className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-orange-600" />
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">2,345</h3>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs font-medium text-green-600 bg-green-100 px-1.5 sm:px-2 py-0.5 rounded">+12.5%</span>
-                <span className="text-xs text-gray-500">较上月</span>
-              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">{user?.userStats?.usage?.total?.requests || '119'}</h3>
+              <p className="text-gray-600 text-sm">请求次数</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-blue-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-blue-100"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm text-gray-600">节省的小时数</span>
-                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
-                  <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-blue-600" />
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <Zap className="w-5 h-5 text-purple-600" />
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">总计</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">185</h3>
-              <p className="text-xs text-gray-500 mt-2">累计节省时间</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                {user?.userStats?.usage?.total?.allTokens ? 
+                  (user.userStats.usage.total.allTokens / 1000000).toFixed(1) + 'M' : 
+                  '6.9M'
+                }
+              </h3>
+              <p className="text-gray-600 text-sm">令牌数量</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-green-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-green-100 sm:col-span-2 lg:col-span-1"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs sm:text-sm text-gray-600">成功率</span>
-                <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
-                  <CheckCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-600" />
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xl">💰</div>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">费用</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">98.5%</h3>
-              <p className="text-xs text-gray-500 mt-2">执行成功率</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                {user?.userStats?.usage?.total?.formattedCost || '$3.82'}
+              </h3>
+              <p className="text-gray-600 text-sm">本月消费</p>
             </motion.div>
-          </div>
 
-          {/* Usage and Subscription Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
-            {/* Current Points Card - Takes 2 columns on lg */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="lg:col-span-2 bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-gray-900">当前积分</h2>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">空间时段 (12:48)</p>
-                </div>
-                <button className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 font-medium self-start sm:self-auto">
-                  查看所有套餐 →
-                </button>
+              <div className="flex items-center justify-between mb-3">
+                <Sparkles className="w-5 h-5 text-orange-600" />
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">平均</span>
               </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                {user?.userStats?.usage?.total?.requests && user?.userStats?.usage?.total?.allTokens
+                  ? Math.round(user.userStats.usage.total.allTokens / user.userStats.usage.total.requests / 1000) + 'K'
+                  : '2.8K'
+                }
+              </h3>
+              <p className="text-gray-600 text-sm">每次请求</p>
+            </motion.div>
+          </div>
 
-              <div className="mb-4 sm:mb-6">
-                <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <span className="text-3xl sm:text-4xl font-bold text-gray-900">2,000</span>
-                  <span className="text-lg sm:text-xl text-gray-400">/ 2,000</span>
+          {/* Main Dashboard Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Left Column - API Key and Token Usage */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* 简洁的API Key信息 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600">🔑</span>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">API Key</h2>
+                      <p className="text-gray-500 text-sm">ID: {user?.userInfo?.id || '1347516272'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-green-700 text-sm font-medium">活跃</span>
+                  </div>
                 </div>
 
-                <div className="mb-3 sm:mb-4">
-                  <div className="flex flex-col sm:flex-row sm:justify-between text-xs sm:text-sm mb-2 gap-1">
-                    <span className="text-gray-600">FREE用户每天使用上限为3000积分</span>
-                    <span className="text-orange-600 font-medium">清零</span>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <code className="text-gray-700 font-mono text-sm break-all">
+                      {user?.userInfo?.apiKey || 'sk-ant-api03-...'}
+                    </code>
+                    <button
+                      onClick={() => handleCopy(user?.userInfo?.apiKey || '')}
+                      className="ml-3 p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-600" />}
+                    </button>
                   </div>
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
+                </div>
+              </motion.div>
+
+              {/* 简洁的Token使用分布 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">令牌分布</h2>
+                  </div>
+                  <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setPeriod('daily')}
+                      className={`px-3 py-1 text-xs font-bold rounded transition-all ${
+                        period === 'daily' 
+                          ? 'bg-white text-purple-600 shadow-sm' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      今日
+                    </button>
+                    <button
+                      onClick={() => setPeriod('monthly')}
+                      className={`px-3 py-1 text-xs font-bold rounded transition-all ${
+                        period === 'monthly' 
+                          ? 'bg-white text-purple-600 shadow-sm' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      本月
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-xs font-medium text-gray-700">输入</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-900">
+                      {user?.userStats?.usage?.total?.inputTokens ? 
+                        (user.userStats.usage.total.inputTokens / 1000).toFixed(1) + 'K' :
+                        '2.8K'
+                      }
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-xs font-medium text-gray-700">输出</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-900">
+                      {user?.userStats?.usage?.total?.outputTokens ? 
+                        (user.userStats.usage.total.outputTokens / 1000).toFixed(1) + 'K' :
+                        '43.8K'
+                      }
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-xs font-medium text-gray-700">缓存创建</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-900">
+                      {user?.userStats?.usage?.total?.cacheCreateTokens ? 
+                        (user.userStats.usage.total.cacheCreateTokens / 1000).toFixed(1) + 'K' :
+                        '324K'
+                      }
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="text-xs font-medium text-gray-700">缓存读取</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-900">
+                      {user?.userStats?.usage?.total?.cacheReadTokens ? 
+                        (user.userStats.usage.total.cacheReadTokens / 1000000).toFixed(1) + 'M' :
+                        '6.5M'
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-600 rounded-lg p-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" />
+                      <span className="font-semibold">总计</span>
+                    </div>
+                    <span className="text-xl font-bold">
+                      {user?.userStats?.usage?.total?.allTokens ? 
+                        (user.userStats.usage.total.allTokens / 1000000).toFixed(1) + 'M' :
+                        '6.9M'
+                      }
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Right Column - Status */}
+            <div className="space-y-6">
+              {/* 简洁状态面板 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">实时状态</h2>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">每日消费</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      ${user?.userStats?.limits?.currentDailyCost?.toFixed(2) || '3.82'}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-blue-600 rounded-full"
                       initial={{ width: 0 }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                      className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full"
+                      animate={{ 
+                        width: user?.userStats?.limits?.dailyCostLimit 
+                          ? `${Math.min((user.userStats.limits.currentDailyCost / user.userStats.limits.dailyCostLimit) * 100, 100)}%`
+                          : '22%'
+                      }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                  <div>
-                    <span className="text-gray-500">已用</span>
-                    <p className="font-medium text-gray-900">0 积分/小时</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <div className="text-xl font-bold text-gray-900">
+                      {user?.userStats?.usage?.total?.requests || '119'}
+                    </div>
+                    <div className="text-xs text-gray-500">请求</div>
                   </div>
-                  <div>
-                    <span className="text-gray-500">上次补充时间</span>
-                    <p className="font-medium text-gray-900">-</p>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                    <div className="text-xl font-bold text-gray-900">∞</div>
+                    <div className="text-xs text-gray-500">并发</div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            {/* Current Subscription Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6"
-            >
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-base sm:text-lg font-bold text-gray-900">当前订阅</h2>
-                <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">当前计划</span>
-              </div>
+              {/* 简化的限制信息 */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-3 h-3 text-white" />
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-900">权限</h2>
+                </div>
 
-              <div className="text-center mb-4 sm:mb-6">
-                <div className="inline-flex items-center justify-center w-12 sm:w-16 h-12 sm:h-16 bg-orange-100 rounded-full mb-2 sm:mb-3">
-                  <Sparkles className="w-6 sm:w-8 h-6 sm:h-8 text-orange-600" />
+                <div className="space-y-3">
+                  {user?.userStats?.restrictions?.enableModelRestriction ? (
+                    <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-yellow-700">模型限制已启用</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-sm font-medium text-green-700">完全访问权限</span>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">FREE</h3>
-                <p className="text-xs sm:text-sm text-gray-500">体验 Claude Code 的基础功能，适合轻度使用和初次体验</p>
-              </div>
-
-              <button className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium rounded-xl hover:shadow-lg transition-all text-sm sm:text-base">
-                立即激活码
-              </button>
-
-              <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
-                <div className="flex items-center gap-2 text-xs sm:text-sm">
-                  <CheckCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-500 flex-shrink-0" />
-                  <span className="text-gray-600">每日 3000 积分额度</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs sm:text-sm">
-                  <CheckCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-500 flex-shrink-0" />
-                  <span className="text-gray-600">基础模型访问</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs sm:text-sm">
-                  <AlertCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-300 flex-shrink-0" />
-                  <span className="text-gray-400 line-through">高级功能访问</span>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
 
-          {/* Invite Friends Section */}
+          {/* 简洁模型使用统计 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6 mb-6 sm:mb-8"
+            transition={{ delay: 0.9 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+            
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="p-1.5 sm:p-2 bg-purple-100 rounded-xl">
-                  <Users className="w-4 sm:w-5 h-4 sm:h-5 text-purple-600" />
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold text-gray-900">邀请好友</h2>
-              </div>
-              <button className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 font-medium self-start sm:self-auto">
-                还没有邀请用户 →
-              </button>
-            </div>
-
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Gift className="w-4 sm:w-5 h-4 sm:h-5 text-purple-600 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-gray-700">
-                  邀请好友注册并订阅，您和好友都将获得 <span className="text-orange-600 font-bold">500 积分奖励</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">我的邀请码</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    value="KPE8NN"
-                    className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-mono text-center text-sm sm:text-base"
-                  />
-                  <button
-                    onClick={() => handleCopy('KPE8NN')}
-                    className="p-2 sm:p-2.5 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
-                  >
-                    {copied ? <Check className="w-4 sm:w-5 h-4 sm:h-5 text-green-500" /> : <Copy className="w-4 sm:w-5 h-4 sm:h-5 text-gray-600" />}
-                  </button>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">AI 模型</h2>
+                  <p className="text-gray-500 text-sm">性能分析</p>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">我的邀请链接</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    value="https://www.aicodemirror.com/register?invitecode=KPE8NN"
-                    className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-xs sm:text-sm"
-                  />
-                  <button className="p-2 sm:p-2.5 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors">
-                    <ExternalLink className="w-4 sm:w-5 h-4 sm:h-5 text-gray-600" />
-                  </button>
-                </div>
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setPeriod('daily')}
+                  className={`px-3 py-1 text-sm font-medium rounded transition-all ${
+                    period === 'daily' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  今日
+                </button>
+                <button
+                  onClick={() => setPeriod('monthly')}
+                  className={`px-3 py-1 text-sm font-medium rounded transition-all ${
+                    period === 'monthly' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  本月
+                </button>
               </div>
             </div>
+
+              {statsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                  <span className="text-gray-600 font-medium">正在加载模型数据...</span>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {modelStats.map((model, index) => (
+                    <motion.div 
+                      key={model.model} 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1 + index * 0.1 }}
+                      className="bg-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900">{model.model.replace('claude-', 'Claude ')}</h3>
+                            <p className="text-gray-600 text-sm">{model.requests} 次请求</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {model.formatted.total}
+                          </div>
+                          <div className="text-xs text-gray-500 font-medium">总费用</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                        <div className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-gray-700">输入</span>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900">{(model.inputTokens / 1000).toFixed(1)}K</div>
+                          <div className="text-xs text-gray-500">{model.formatted.input}</div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-gray-700">输出</span>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900">{(model.outputTokens / 1000).toFixed(1)}K</div>
+                          <div className="text-xs text-gray-500">{model.formatted.output}</div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-gray-700">缓存创建</span>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900">{(model.cacheCreateTokens / 1000).toFixed(1)}K</div>
+                          <div className="text-xs text-gray-500">{model.formatted.cacheWrite}</div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <span className="text-xs font-medium text-gray-700">缓存读取</span>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900">{(model.cacheReadTokens / 1000000).toFixed(1)}M</div>
+                          <div className="text-xs text-gray-500">{model.formatted.cacheRead}</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">总令牌数</span>
+                          <span className="text-lg font-bold text-blue-600">{(model.allTokens / 1000000).toFixed(1)}M</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <motion.div 
+                            className="h-full bg-blue-600 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ 
+                              width: modelStats.length > 1 
+                                ? `${(model.allTokens / Math.max(...modelStats.map(m => m.allTokens))) * 100}%`
+                                : '100%'
+                            }}
+                            transition={{ duration: 2, delay: 1.5 + index * 0.1, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {modelStats.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Sparkles className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 font-medium">暂无{period === 'daily' ? '今日' : '本月'}模型数据</p>
+                    </div>
+                  )}
+                </div>
+              )}
           </motion.div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6 border-2 border-transparent hover:border-blue-200 transition-all cursor-pointer"
-            >
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-blue-100 rounded-xl">
-                  <Zap className="w-5 sm:w-6 h-5 sm:h-6 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">快速搜索</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">瞬间搜索您的代码库</p>
-                  <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
-                    <code className="text-green-600 text-xs font-mono">$ claude search "function"</code>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6 border-2 border-transparent hover:border-green-200 transition-all cursor-pointer"
-            >
-              <div className="flex items-start gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-green-100 rounded-xl">
-                  <Shield className="w-5 sm:w-6 h-5 sm:h-6 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">安全分析</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">分析代码安全性</p>
-                  <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
-                    <code className="text-green-600 text-xs font-mono">$ claude analyze security</code>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
         </main>
       </div>
     </div>

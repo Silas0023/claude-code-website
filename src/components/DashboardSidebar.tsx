@@ -53,7 +53,6 @@ export default function DashboardSidebar({
   useEffect(() => {
     // Define parent-child relationships
     const parentChildMap: { [key: string]: string[] } = {
-      '使用历史': ['/dashboard/history/macos', '/dashboard/history/windows'],
       '使用教程': ['/dashboard/docs', '/dashboard/wechat', '/dashboard/videos'],
       '会员中心': ['/dashboard/upgrade', '/dashboard/invite', '/dashboard/offers']
     };
@@ -76,28 +75,6 @@ export default function DashboardSidebar({
       label: '概览',
       href: '/dashboard',
       icon: <LayoutDashboard className="w-5 h-5" />
-    },
-    {
-      label: '使用历史',
-      icon: <Terminal className="w-5 h-5" />,
-      children: [
-        {
-          label: 'macOS/Linux',
-          href: '/dashboard/history/macos',
-          icon: <Terminal className="w-4 h-4" />
-        },
-        {
-          label: 'Windows',
-          href: '/dashboard/history/windows',
-          icon: <Terminal className="w-4 h-4" />
-        }
-      ]
-    },
-    {
-      label: 'API密钥',
-      href: '/dashboard/api-keys',
-      icon: <Shield className="w-5 h-5" />,
-      badge: '2'
     },
     {
       label: '使用教程',
@@ -141,11 +118,6 @@ export default function DashboardSidebar({
           icon: <Gift className="w-4 h-4" />
         }
       ]
-    },
-    {
-      label: '账单管理',
-      href: '/dashboard/billing',
-      icon: <CreditCard className="w-5 h-5" />
     },
     {
       label: '设置',
