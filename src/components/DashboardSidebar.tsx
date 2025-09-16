@@ -8,7 +8,6 @@ import {
   Terminal,
   LayoutDashboard,
   FileText,
-  Settings,
   HelpCircle,
   ChevronDown,
   ChevronRight,
@@ -81,11 +80,6 @@ export default function DashboardSidebar({
       href: '/dashboard/upgrade',
       icon: <Star className="w-5 h-5" />,
       badge: 'PRO'
-    },
-    {
-      label: '设置',
-      href: '/dashboard/settings',
-      icon: <Settings className="w-5 h-5" />
     },
     {
       label: '帮助中心',
@@ -254,9 +248,9 @@ export default function DashboardSidebar({
                         '用户'
                       }
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {/* <div className="text-xs text-gray-500 dark:text-gray-400">
                       ID: {user.userInfo?.id || user.userStats?.id || 'N/A'}
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>
@@ -268,15 +262,27 @@ export default function DashboardSidebar({
               </span>
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-              使用量: {user?.userStats?.usage?.total?.requests || 0} / {user?.userStats?.limits?.requestLimit || '∞'}
+              过期时间: {user?.userInfo?.subscribeEndTime
+                ? new Date(user.userInfo.subscribeEndTime).toLocaleDateString('zh-CN')
+                : '永不过期'
+              }
             </div>
             <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
                 style={{
-                  width: user?.userStats?.limits?.requestLimit ?
-                    `${Math.min((user?.userStats?.usage?.total?.requests || 0) / user.userStats.limits.requestLimit * 100, 100)}%` :
-                    '0%'
+                  width: (() => {
+                    if (!user?.userInfo?.subscribeStartTime || !user?.userInfo?.subscribeEndTime) {
+                      return '100%';
+                    }
+                    const startTime = new Date(user.userInfo.subscribeStartTime).getTime();
+                    const endTime = new Date(user.userInfo.subscribeEndTime).getTime();
+                    const currentTime = Date.now();
+                    const totalDuration = endTime - startTime;
+                    const usedDuration = currentTime - startTime;
+                    const percentage = Math.max(0, Math.min(100, (usedDuration / totalDuration) * 100));
+                    return `${percentage}%`;
+                  })()
                 }}
               />
             </div>

@@ -341,13 +341,13 @@ export default function LoginPage() {
           </div>
 
           {/* Footer Links */}
-          <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500">
+          {/* <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-500">
             <Link href="/terms" className="hover:text-gray-700 transition-colors">服务条款</Link>
             <span className="w-1 h-1 bg-gray-300 rounded-full" />
             <Link href="/privacy" className="hover:text-gray-700 transition-colors">隐私政策</Link>
             <span className="w-1 h-1 bg-gray-300 rounded-full" />
             <Link href="/help" className="hover:text-gray-700 transition-colors">帮助中心</Link>
-          </div>
+          </div> */}
         </motion.div>
       </div>
     </div>

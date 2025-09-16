@@ -1,0 +1,16 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/favicon.ico/route": "/favicon.ico",
+  "/dashboard/docs/page": "/dashboard/docs",
+  "/dashboard/page": "/dashboard",
+  "/dashboard/api-keys/page": "/dashboard/api-keys",
+  "/dashboard/upgrade/page": "/dashboard/upgrade",
+  "/dashboard/tutorial/page": "/dashboard/tutorial",
+  "/dashboard/videos/page": "/dashboard/videos",
+  "/dashboard/offers/page": "/dashboard/offers",
+  "/login/page": "/login",
+  "/page": "/",
+  "/dashboard/invite/page": "/dashboard/invite",
+  "/dashboard/wechat/page": "/dashboard/wechat",
+  "/dashboard/settings/page": "/dashboard/settings"
+}

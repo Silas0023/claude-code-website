@@ -52,10 +52,10 @@ export default function HeroSection() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 mb-8"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 text-white border border-orange-200 dark:border-orange-800 mb-8"
           >
-            <Sparkles className="w-4 h-4 text-orange-500" />
-            <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Claude Code - 终端中的 AI 协作者</span>
+            <Sparkles className="w-4 h-4 text-white animate-pulse" />
+            <span className="text-sm font-medium">🎉 注册即可免费试用一天！</span>
           </motion.div>
 
           <motion.h1
@@ -149,7 +149,7 @@ export default function HeroSection() {
               onClick={handleGetStarted}
               className="gradient-bg text-white px-8 py-4 rounded-full font-semibold text-base flex items-center justify-center gap-2 hover:shadow-lg hover:scale-105 transition-all duration-200 group"
             >
-              开始使用
+              立即试用
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <a

@@ -54,9 +54,9 @@ export default function Navigation() {
                 {item.label}
               </Link>
             ))}
-            <button className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity">
-              开始使用
-            </button>
+            <Link href="/login" className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity">
+              立即试用
+            </Link>
           </div>
 
           <button
@@ -87,9 +87,9 @@ export default function Navigation() {
                 {item.label}
               </Link>
             ))}
-            <button className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium w-full mt-4">
-              开始使用
-            </button>
+            <Link href="/login" className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium w-full mt-4 text-center block">
+              立即试用
+            </Link>
           </motion.div>
         )}
       </div>

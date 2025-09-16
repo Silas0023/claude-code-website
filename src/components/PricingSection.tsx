@@ -140,7 +140,7 @@ export default function PricingSection() {
           className="text-center mt-16"
         >
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            所有方案均包含 14 天免费试用，无需信用卡
+            所有方案均包含 1 天免费试用，无需信用卡
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             需要更多信息？查看我们的 <a href="#faq" className="text-orange-500 hover:underline">常见问题</a>

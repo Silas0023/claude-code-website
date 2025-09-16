@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -14,16 +13,14 @@ import {
   Menu,
   Zap,
   Activity,
-  Users,
   CreditCard,
   BarChart3,
   Cpu,
   Database,
   Shield,
-  ArrowUpRight,
-  ArrowDownRight,
   X,
-  LogOut
+  LogOut,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardSidebar from '@/components/DashboardSidebar';
@@ -31,7 +28,7 @@ import { apiService, ModelUsageStats } from '@/lib/api';
 import AnimatedNumber from '@/components/AnimatedNumber';
 
 export default function DashboardPage() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, refreshAllUserData } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,6 +36,8 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [period, setPeriod] = useState<'daily' | 'monthly'>('monthly');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasRefreshedData = useRef(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -46,21 +45,51 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router]);
 
+  // 页面加载时刷新用户数据
+  useEffect(() => {
+    console.log('Dashboard useEffect triggered - user:', user, 'isLoading:', isLoading, 'hasRefreshed:', hasRefreshedData.current);
+    if (user && !isLoading && !hasRefreshedData.current) {
+      console.log('Dashboard page loaded, refreshing user data for user ID:', user.id);
+      hasRefreshedData.current = true;
+      refreshAllUserData().catch(error => {
+        console.error('Failed to refresh user data on page load:', error);
+        hasRefreshedData.current = false; // 如果失败，允许重试
+      });
+    } else {
+      console.log('Skipping data refresh - user:', !!user, 'isLoading:', isLoading, 'hasRefreshed:', hasRefreshedData.current);
+    }
+  }, [user, isLoading]);
+
   const fetchModelStats = async () => {
-    const apiId = user?.userStats?.id || user?.userInfo?.id || 'e5507f6f-c267-4991-979d-84f919fa6410';
+    if (!user?.id) {
+      console.warn('User ID not available');
+      return;
+    }
 
     setStatsLoading(true);
     try {
-      console.log('Fetching model stats for:', apiId, period);
-      const response = await apiService.getUserModelStats(apiId.toString(), period);
-      console.log('Model stats response:', response);
+      // 先请求用户统计信息
+      console.log('Fetching user stats for user ID:', user.id);
+      const userStatsResponse = await apiService.getUserStats(user.id);
+      console.log('User stats response:', userStatsResponse);
 
-      if (response.code === 200 && response.data && response.data.success) {
-        setModelStats(response.data.data);
-        console.log('Model stats set:', response.data.data);
+      if (userStatsResponse.code === 200 || userStatsResponse.code === 0) {
+        // 使用userStats中的id请求模型统计
+        const apiId = userStatsResponse.data.id || user?.userInfo?.apiKey || 'e5507f6f-c267-4991-979d-84f919fa6410';
+
+        console.log('Fetching model stats for:', apiId, period);
+        const modelStatsResponse = await apiService.getUserModelStats(apiId.toString(), period);
+        console.log('Model stats response:', modelStatsResponse);
+
+        if (modelStatsResponse.code === 200 && modelStatsResponse.data && modelStatsResponse.data.success) {
+          setModelStats(modelStatsResponse.data.data);
+          console.log('Model stats set:', modelStatsResponse.data.data);
+        }
+      } else {
+        console.error('Failed to fetch user stats:', userStatsResponse.message);
       }
     } catch (error) {
-      console.error('Failed to fetch model stats:', error);
+      console.error('Failed to fetch stats:', error);
     } finally {
       setStatsLoading(false);
     }
@@ -88,6 +117,23 @@ export default function DashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRefreshData = async () => {
+    if (refreshing) return;
+
+    setRefreshing(true);
+    try {
+      // 1. 先刷新所有用户数据（包括用户信息和统计信息）
+      await refreshAllUserData();
+
+      // 2. 然后刷新模型统计数据
+      await fetchModelStats();
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -100,10 +146,6 @@ export default function DashboardPage() {
     return null;
   }
 
-  // 计算百分比变化
-  const calculatePercentageChange = () => {
-    return Math.floor(Math.random() * 30) + 10; // 模拟数据
-  };
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex overflow-hidden">
@@ -132,15 +174,27 @@ export default function DashboardPage() {
                 <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">欢迎回到 Claude Code 控制中心</p>
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push('/dashboard/upgrade')}
-              className="hidden sm:flex px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all items-center gap-2 text-sm sm:text-base cursor-pointer"
-            >
-              <Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              <span className="hidden sm:inline">立即升级</span>
-            </motion.button>
+            <div className="flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleRefreshData}
+                disabled={refreshing}
+                className="flex px-3 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 font-medium rounded-full border border-gray-200 hover:shadow-md transition-all items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-3.5 sm:w-4 h-3.5 sm:h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{refreshing ? '刷新中' : '刷新'}</span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push('/dashboard/upgrade')}
+                className="hidden sm:flex px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-full hover:shadow-lg hover:shadow-purple-500/25 transition-all items-center gap-2 text-sm sm:text-base cursor-pointer"
+              >
+                <Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">立即升级</span>
+              </motion.button>
+            </div>
           </div>
         </header>
 
@@ -176,13 +230,9 @@ export default function DashboardPage() {
                   >
                     <Activity className="w-5 h-5 text-white" />
                   </motion.div>
-                  <div className="flex items-center gap-1 text-white/90 text-xs font-medium">
-                    <ArrowUpRight className="w-3 h-3" />
-                    <span>+{calculatePercentageChange()}%</span>
-                  </div>
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-1">
-                  <AnimatedNumber value={user?.userStats?.usage?.total?.requests || 119} />
+                  <AnimatedNumber value={user?.userStats?.usage?.total?.requests || 0} />
                 </h3>
                 <p className="text-blue-50 text-sm font-medium">API 请求次数</p>
               </div>
@@ -216,15 +266,11 @@ export default function DashboardPage() {
                   >
                     <Database className="w-5 h-5 text-white" />
                   </motion.div>
-                  <div className="flex items-center gap-1 text-white/90 text-xs font-medium">
-                    <ArrowUpRight className="w-3 h-3" />
-                    <span>+{calculatePercentageChange()}%</span>
-                  </div>
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-1">
                   {user?.userStats?.usage?.total?.allTokens ?
                     (user.userStats.usage.total.allTokens / 1000000).toFixed(1) + 'M' :
-                    '6.9M'
+                    '0'
                   }
                 </h3>
                 <p className="text-purple-50 text-sm font-medium">Token 使用量</p>
@@ -259,13 +305,9 @@ export default function DashboardPage() {
                   >
                     <CreditCard className="w-5 h-5 text-white" />
                   </motion.div>
-                  <div className="flex items-center gap-1 text-white/90 text-xs font-medium">
-                    <ArrowDownRight className="w-3 h-3" />
-                    <span>-12%</span>
-                  </div>
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-1">
-                  {user?.userStats?.usage?.total?.formattedCost || '$3.82'}
+                  {user?.userStats?.usage?.total?.formattedCost || '$0.00'}
                 </h3>
                 <p className="text-emerald-50 text-sm font-medium">本月消费</p>
               </div>
@@ -299,15 +341,11 @@ export default function DashboardPage() {
                   >
                     <BarChart3 className="w-5 h-5 text-white" />
                   </motion.div>
-                  <div className="flex items-center gap-1 text-white/90 text-xs font-medium">
-                    <ArrowUpRight className="w-3 h-3" />
-                    <span>+8%</span>
-                  </div>
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-1">
-                  {user?.userStats?.usage?.total?.requests && user?.userStats?.usage?.total?.allTokens
+                  {user?.userStats?.usage?.total?.requests && user?.userStats?.usage?.total?.allTokens && user.userStats.usage.total.requests > 0
                     ? Math.round(user.userStats.usage.total.allTokens / user.userStats.usage.total.requests / 1000) + 'K'
-                    : '2.8K'
+                    : '0'
                   }
                 </h3>
                 <p className="text-orange-50 text-sm font-medium">平均 Token/请求</p>
@@ -427,10 +465,15 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold text-gray-900">
                       {user?.userStats?.usage?.total?.inputTokens ?
                         (user.userStats.usage.total.inputTokens / 1000).toFixed(1) + 'K' :
-                        '2.8K'
+                        '0'
                       }
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">占比 15%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {user?.userStats?.usage?.total?.allTokens && user?.userStats?.usage?.total?.allTokens > 0 ?
+                        `占比 ${Math.round((user?.userStats?.usage?.total?.inputTokens || 0) / user.userStats.usage.total.allTokens * 100)}%` :
+                        ''
+                      }
+                    </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
@@ -441,10 +484,15 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold text-gray-900">
                       {user?.userStats?.usage?.total?.outputTokens ?
                         (user.userStats.usage.total.outputTokens / 1000).toFixed(1) + 'K' :
-                        '43.8K'
+                        '0'
                       }
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">占比 25%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {user?.userStats?.usage?.total?.allTokens && user?.userStats?.usage?.total?.allTokens > 0 ?
+                        `占比 ${Math.round((user?.userStats?.usage?.total?.outputTokens || 0) / user.userStats.usage.total.allTokens * 100)}%` :
+                        ''
+                      }
+                    </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
@@ -455,10 +503,15 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold text-gray-900">
                       {user?.userStats?.usage?.total?.cacheCreateTokens ?
                         (user.userStats.usage.total.cacheCreateTokens / 1000).toFixed(1) + 'K' :
-                        '324K'
+                        '0'
                       }
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">占比 35%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {user?.userStats?.usage?.total?.allTokens && user?.userStats?.usage?.total?.allTokens > 0 ?
+                        `占比 ${Math.round((user?.userStats?.usage?.total?.cacheCreateTokens || 0) / user.userStats.usage.total.allTokens * 100)}%` :
+                        ''
+                      }
+                    </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
@@ -469,10 +522,15 @@ export default function DashboardPage() {
                     <div className="text-2xl font-bold text-gray-900">
                       {user?.userStats?.usage?.total?.cacheReadTokens ?
                         (user.userStats.usage.total.cacheReadTokens / 1000000).toFixed(1) + 'M' :
-                        '6.5M'
+                        '0'
                       }
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">占比 25%</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {user?.userStats?.usage?.total?.allTokens && user?.userStats?.usage?.total?.allTokens > 0 ?
+                        `占比 ${Math.round((user?.userStats?.usage?.total?.cacheReadTokens || 0) / user.userStats.usage.total.allTokens * 100)}%` :
+                        ''
+                      }
+                    </div>
                   </div>
                 </div>
 
@@ -486,7 +544,7 @@ export default function DashboardPage() {
                       <span className="text-3xl font-bold text-white">
                         {user?.userStats?.usage?.total?.allTokens ?
                           (user.userStats.usage.total.allTokens / 1000000).toFixed(1) :
-                          '6.9'
+                          '0.0'
                         }
                       </span>
                       <span className="text-white/90 font-medium">M Tokens</span>
@@ -522,7 +580,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm text-gray-600">今日消费</span>
                     <span className="text-2xl font-bold text-gray-900">
-                      ${user?.userStats?.limits?.currentDailyCost?.toFixed(2) || '3.82'}
+                      ${user?.userStats?.limits?.currentDailyCost?.toFixed(2) || '0.00'}
                     </span>
                   </div>
                   <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
@@ -530,9 +588,9 @@ export default function DashboardPage() {
                       className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full shadow-sm"
                       initial={{ width: 0 }}
                       animate={{
-                        width: user?.userStats?.limits?.dailyCostLimit
+                        width: user?.userStats?.limits?.dailyCostLimit && user?.userStats?.limits?.currentDailyCost
                           ? `${Math.min((user.userStats.limits.currentDailyCost / user.userStats.limits.dailyCostLimit) * 100, 100)}%`
-                          : '22%'
+                          : '0%'
                       }}
                       transition={{
                         duration: 2,
@@ -545,14 +603,14 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between mt-2">
                     <span className="text-xs text-gray-500">已使用</span>
-                    <span className="text-xs text-gray-500">限额 $50.00</span>
+                    <span className="text-xs text-gray-500">限额 ${user?.userStats?.limits?.dailyCostLimit?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center border border-blue-200">
                     <div className="text-2xl font-bold text-gray-900">
-                      <AnimatedNumber value={user?.userStats?.usage?.total?.requests || 119} />
+                      <AnimatedNumber value={user?.userStats?.usage?.total?.requests || 0} />
                     </div>
                     <div className="text-xs text-blue-700 font-medium">总请求</div>
                   </div>
@@ -633,46 +691,63 @@ export default function DashboardPage() {
               <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
                 <button
                   onClick={() => setPeriod('daily')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                  disabled={statsLoading}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                     period === 'daily'
                       ? 'bg-white text-indigo-600 shadow-md'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  } ${statsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   今日
                 </button>
                 <button
                   onClick={() => setPeriod('monthly')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                  disabled={statsLoading}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                     period === 'monthly'
                       ? 'bg-white text-indigo-600 shadow-md'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  } ${statsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   本月
                 </button>
               </div>
             </div>
 
-            {statsLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
-                <span className="text-gray-500 font-medium">正在加载模型数据...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {modelStats.map((model, index) => (
+            <div className="min-h-[300px] relative">
+              <AnimatePresence mode="wait">
+                {statsLoading ? (
                   <motion.div
-                    key={model.model}
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.02, x: 5 }}
-                    transition={{
-                      delay: 1 + index * 0.1,
-                      duration: 0.5,
-                      type: "spring",
-                      stiffness: 100
-                    }}
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 flex flex-col items-center justify-center py-12"
+                  >
+                    <div className="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
+                    <span className="text-gray-500 font-medium">正在加载模型数据...</span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="content"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="space-y-4"
+                  >
+                    {modelStats.map((model, index) => (
+                      <motion.div
+                        key={`${model.model}-${period}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ scale: 1.01, y: -2 }}
+                        transition={{
+                          delay: index * 0.1,
+                          duration: 0.4,
+                          ease: "easeOut"
+                        }}
                     className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-shadow duration-300"
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -746,11 +821,9 @@ export default function DashboardPage() {
                               : '100%'
                           }}
                           transition={{
-                            duration: 1.5,
-                            delay: 1.2 + index * 0.15,
-                            type: "spring",
-                            stiffness: 40,
-                            damping: 15
+                            duration: 0.8,
+                            delay: 0.2 + index * 0.1,
+                            ease: "easeOut"
                           }}
                         />
                       </div>
@@ -758,16 +831,18 @@ export default function DashboardPage() {
                   </motion.div>
                 ))}
 
-                {modelStats.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Sparkles className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-500 font-medium">暂无{period === 'daily' ? '今日' : '本月'}模型数据</p>
-                  </div>
+                    {modelStats.length === 0 && (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Sparkles className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 font-medium">暂无{period === 'daily' ? '今日' : '本月'}模型数据</p>
+                      </div>
+                    )}
+                  </motion.div>
                 )}
-              </div>
-            )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         </main>
       </div>

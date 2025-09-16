@@ -3,9 +3,21 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Sparkles, Zap, Download, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function CTASection() {
   const [showVideo, setShowVideo] = useState(false)
+  const router = useRouter()
+  const { checkAuth } = useAuth()
+
+  const handleGetStarted = () => {
+    if (checkAuth()) {
+      router.push('/dashboard')
+    } else {
+      router.push('/login')
+    }
+  }
 
   return (
     <section className="py-20 relative overflow-hidden">
@@ -49,7 +61,10 @@ export default function CTASection() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
           >
-            <button className="gradient-bg text-white px-8 py-4 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group text-lg animate-pulse-glow">
+            <button
+              onClick={handleGetStarted}
+              className="gradient-bg text-white px-8 py-4 rounded-full font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity group text-lg animate-pulse-glow"
+            >
               <Download className="w-5 h-5" />
               立即免费试用
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -75,7 +90,7 @@ export default function CTASection() {
                 <div className="w-16 h-16 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
                   <Sparkles className="w-8 h-8 text-green-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-green-500 mb-2">14天</h3>
+                <h3 className="text-2xl font-bold text-green-500 mb-2">1天</h3>
                 <p className="text-gray-600 dark:text-gray-400">免费试用期</p>
               </div>
               <div>

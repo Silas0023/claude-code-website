@@ -48,105 +48,149 @@ interface Plan {
 }
 
 export default function UpgradePage() {
-  const { logout, user } = useAuth();
+  const { logout, user, refreshAllUserData } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wxpay'>('alipay');
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   useEffect(() => {
-    const fetchSubscriptionPlans = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiService.getSubscriptionPlans();
-        if (response.code === 200 || response.code === 0) {
-          setSubscriptionPlans(response.data);
+        // 并行获取订阅计划和用户数据
+        const [subscriptionResponse] = await Promise.all([
+          apiService.getSubscriptionPlans(),
+          user?.id ? refreshAllUserData().catch(console.error) : Promise.resolve()
+        ]);
+
+        if (subscriptionResponse.code === 200 || subscriptionResponse.code === 0) {
+          setSubscriptionPlans(subscriptionResponse.data);
         }
       } catch (error) {
-        console.error('Failed to fetch subscription plans:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSubscriptionPlans();
-  }, []);
+    fetchData();
+  }, [user?.id]);
 
   const handleLogout = () => {
     logout();
     router.push('/');
   };
 
-  const convertToDisplayPlans = (): Plan[] => {
-    const basePlans: Plan[] = [
-      {
-        id: 'free',
-        name: '免费版',
-        icon: <Sparkles className="w-6 h-6" />,
-        price: 0,
-        period: billingPeriod === 'monthly' ? '/月' : '/年',
-        description: '适合个人开发者体验使用',
-        gradient: 'from-gray-400 to-gray-500',
-        shadowColor: 'shadow-gray-500/20',
-        features: [
-          { text: '每日 3,000 积分额度', included: true },
-          { text: '基础 AI 模型访问', included: true },
-          { text: '代码搜索功能', included: true },
-          { text: '社区支持', included: true },
-          { text: '高级 AI 模型', included: false },
-          { text: 'API 访问权限', included: false },
-          { text: '优先技术支持', included: false },
-          { text: '团队协作功能', included: false }
-        ]
-      },
-      {
-        id: 'pro',
-        name: '专业版',
-        icon: <Zap className="w-6 h-6" />,
-        price: billingPeriod === 'monthly' ? 99 : 990,
-        originalPrice: billingPeriod === 'monthly' ? undefined : 1188,
-        period: billingPeriod === 'monthly' ? '/月' : '/年',
-        description: '适合专业开发者和小型团队',
-        gradient: 'from-blue-500 to-purple-600',
-        shadowColor: 'shadow-purple-500/20',
-        isPopular: true,
-        badge: '最受欢迎',
-        features: [
-          { text: '每日 50,000 积分额度', included: true, highlight: true },
-          { text: '所有 AI 模型访问', included: true, highlight: true },
-          { text: 'API 完全访问权限', included: true },
-          { text: '优先技术支持', included: true },
-          { text: '5 人团队协作', included: true },
-          { text: '代码版本管理', included: true },
-          { text: '自定义模型微调', included: true },
-          { text: '批量处理功能', included: true }
-        ]
-      },
-      {
-        id: 'enterprise',
-        name: '企业版',
-        icon: <Crown className="w-6 h-6" />,
-        price: 499,
-        period: billingPeriod === 'monthly' ? '/月' : '/年',
-        description: '适合大型团队和企业使用',
-        gradient: 'from-purple-600 to-pink-600',
-        shadowColor: 'shadow-pink-500/20',
-        features: [
-          { text: '无限积分额度', included: true, highlight: true },
-          { text: '专属 AI 模型', included: true, highlight: true },
-          { text: '无限团队成员', included: true, highlight: true },
-          { text: '24/7 专属支持', included: true },
-          { text: '私有部署选项', included: true },
-          { text: 'SSO 单点登录', included: true },
-          { text: '合规与审计日志', included: true },
-          { text: 'SLA 服务保障', included: true }
-        ]
-      }
-    ];
+  const handleUpgrade = async (planName: string) => {
+    if (!user?.id) {
+      alert('请先登录');
+      return;
+    }
 
-    return basePlans;
+    // 根据套餐名称找到对应的配置ID
+    const plan = filteredPlans.find(p => p.subscriptionType === planName);
+    if (!plan) {
+      alert('套餐不存在');
+      return;
+    }
+
+    // 使用套餐的实际ID作为subscriptionConfigId
+    const planData = subscriptionPlans.find(p => p.subscriptionType === planName);
+    if (!planData) {
+      alert('套餐不存在');
+      return;
+    }
+
+    // 如果API数据中有id字段就使用，否则用默认值
+    const subscriptionConfigId = planData.id || subscriptionPlans.findIndex(p => p.subscriptionType === planName) + 1;
+
+    setIsCreatingOrder(true);
+
+    try {
+      const response = await apiService.createOrder(
+        subscriptionConfigId,
+        paymentMethod,
+        parseInt(user.id)
+      );
+
+      if (response.code === 200) {
+        // 跳转到支付页面
+        window.open(response.data.paymentUrl, '_blank');
+      } else {
+        alert(response.message || '创建订单失败');
+      }
+    } catch (error) {
+      console.error('创建订单失败:', error);
+      alert('创建订单失败，请重试');
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  // 过滤掉ID=1的套餐
+  const filteredPlans = subscriptionPlans.filter(plan => plan.id !== 1);
+
+  const convertToDisplayPlans = (): Plan[] => {
+    if (filteredPlans.length === 0) return [];
+
+    console.log('Subscription plans:', subscriptionPlans); // Debug log
+    console.log('Filtered plans (excluding ID=1):', filteredPlans); // Debug log
+
+    const iconMap: { [key: string]: React.ReactNode } = {
+      '免费试用': <Sparkles className="w-6 h-6" />,
+      '基础版': <Zap className="w-6 h-6" />,
+      '专业版': <Crown className="w-6 h-6" />,
+      '企业版': <Diamond className="w-6 h-6" />
+    };
+
+    const gradientMap: { [key: string]: string } = {
+      '免费试用': 'from-gray-400 to-gray-500',
+      '基础版': 'from-green-500 to-emerald-600',
+      '专业版': 'from-blue-500 to-purple-600',
+      '企业版': 'from-purple-600 to-pink-600'
+    };
+
+    const shadowMap: { [key: string]: string } = {
+      '免费试用': 'shadow-gray-500/20',
+      '基础版': 'shadow-emerald-500/20',
+      '专业版': 'shadow-purple-500/20',
+      '企业版': 'shadow-pink-500/20'
+    };
+
+    return filteredPlans.map((plan, index) => {
+      console.log(`Processing plan ${index}:`, plan); // Debug log
+
+      // 将description按换行符分割成特性列表
+      const features = plan.description.split('\n\n').map(line => {
+        const cleanLine = line.trim();
+        return cleanLine ? { text: cleanLine, included: true, highlight: index === 2 } : null;
+      }).filter(Boolean) as { text: string; included: boolean; highlight?: boolean }[];
+
+      // 确定是否为热门套餐（专业版）
+      const isPopular = plan.subscriptionType === '专业版';
+
+      const displayPlan = {
+        id: plan.subscriptionType,
+        name: plan.subscriptionType,
+        icon: iconMap[plan.subscriptionType] || <Sparkles className="w-6 h-6" />,
+        price: plan.monthlyPrice,
+        originalPrice: undefined,
+        period: '/月',
+        description: `💰 每日限额: $${plan.dailyCostLimit}`,
+        gradient: gradientMap[plan.subscriptionType] || 'from-gray-400 to-gray-500',
+        shadowColor: shadowMap[plan.subscriptionType] || 'shadow-gray-500/20',
+        isPopular,
+        badge: isPopular ? '最受欢迎' : undefined,
+        features
+      };
+
+      console.log(`Generated display plan:`, displayPlan); // Debug log
+      return displayPlan;
+    });
   };
 
   const plans: Plan[] = loading ? [] : convertToDisplayPlans();
@@ -157,6 +201,7 @@ export default function UpgradePage() {
         onLogout={handleLogout}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
+        user={user}
       />
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
@@ -174,80 +219,95 @@ export default function UpgradePage() {
                 <p className="text-xs sm:text-sm text-gray-500 mt-0.5">选择适合您的套餐，解锁更多强大功能</p>
               </div>
             </div>
-            <motion.div
-              className="hidden sm:flex items-center gap-2 bg-gray-100 rounded-xl p-1"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <button
-                onClick={() => setBillingPeriod('monthly')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  billingPeriod === 'monthly'
-                    ? 'bg-white text-gray-900 shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                月付
-              </button>
-              <button
-                onClick={() => setBillingPeriod('yearly')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  billingPeriod === 'yearly'
-                    ? 'bg-white text-gray-900 shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                年付
-                <motion.span
-                  className="ml-2 px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs rounded-full font-bold"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  省17%
-                </motion.span>
-              </button>
-            </motion.div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
+                月付订阅
+              </span>
+            </div>
           </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {/* Current Plan Banner */}
+
+          {/* Payment Method Selection */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-2xl border border-purple-100 relative overflow-hidden"
+            className="mb-6 p-4 bg-white rounded-xl border border-gray-200 shadow-sm"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-200/20 to-pink-200/20 rounded-full -mr-32 -mt-32 blur-3xl" />
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <motion.div
-                  className="p-3 bg-white rounded-xl shadow-lg"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Diamond className="w-6 h-6 text-purple-600" />
-                </motion.div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">您当前的套餐</h2>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    {user?.userInfo?.subscribeType || 'FREE'} -
-                    {user?.userStats ? ` 每日 ${user.userStats.limits.dailyCostLimit} 积分限制` : ' 免费版'}
-                  </p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">选择支付方式</h3>
+            <div className="flex gap-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setPaymentMethod('alipay')}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                  paymentMethod === 'alipay'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  支
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">今日已用</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  <AnimatedNumber value={user?.userStats?.limits?.currentDailyCost || 0} />
-                  <span className="text-lg text-gray-500"> / {user?.userStats?.limits?.dailyCostLimit || 3000}</span>
-                </p>
-              </div>
+                <div>
+                  <p className="font-medium text-gray-900">支付宝</p>
+                  <p className="text-sm text-gray-500">安全便捷</p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setPaymentMethod('wxpay')}
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                  paymentMethod === 'wxpay'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                  微
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">微信支付</p>
+                  <p className="text-sm text-gray-500">扫码支付</p>
+                </div>
+              </motion.button>
             </div>
           </motion.div>
 
           {/* Plans Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {plans.map((plan, index) => (
+            {loading ? (
+              // Loading skeleton
+              [...Array(4)].map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100"
+                >
+                  <div className="animate-pulse">
+                    <div className="w-16 h-16 bg-gray-200 rounded-2xl mb-4"></div>
+                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+                    <div className="h-8 bg-gray-200 rounded w-1/2 mb-6"></div>
+                    <div className="space-y-3">
+                      {[...Array(5)].map((_, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-gray-200 rounded-full"></div>
+                          <div className="h-4 bg-gray-200 rounded flex-1"></div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 h-12 bg-gray-200 rounded-2xl"></div>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              plans.map((plan, index) => (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -279,7 +339,7 @@ export default function UpgradePage() {
                     <motion.div
                       className="absolute -top-1 -right-1"
                       animate={{ rotate: [0, 5, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     >
                       <div className="relative">
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 blur-lg opacity-75" />
@@ -305,7 +365,7 @@ export default function UpgradePage() {
                     <p className="text-gray-600 mb-6">{plan.description}</p>
 
                     {/* Price */}
-                    <div className="mb-6">
+                    <div className="mb-4">
                       <div className="flex items-baseline gap-2">
                         {plan.originalPrice && (
                           <span className="text-xl text-gray-400 line-through">
@@ -316,6 +376,22 @@ export default function UpgradePage() {
                           ¥<AnimatedNumber value={plan.price} />
                         </span>
                         <span className="text-gray-500 ml-1">{plan.period}</span>
+                      </div>
+                    </div>
+
+                    {/* Daily Limit Highlight */}
+                    <div className="mb-6 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-gray-700">每日限额</span>
+                        </div>
+                        <span className="text-lg font-bold text-blue-600">
+                          ${filteredPlans.find(p => p.subscriptionType === plan.name)?.dailyCostLimit || 0}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        并发数: {filteredPlans.find(p => p.subscriptionType === plan.name)?.concurrencyLimit || 1}
                       </div>
                     </div>
                   </div>
@@ -346,13 +422,17 @@ export default function UpgradePage() {
                                 <X className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
                               )}
                             </motion.div>
-                            <span className={`text-sm ${
+                            <div className={`text-sm ${
                               feature.included
                                 ? feature.highlight ? 'text-gray-900 font-medium' : 'text-gray-700'
                                 : 'text-gray-400'
                             }`}>
-                              {feature.text}
-                            </span>
+                              {feature.text.split('\n').map((line, lineIdx) => (
+                                <div key={lineIdx} className={lineIdx > 0 ? 'mt-1' : ''}>
+                                  {line}
+                                </div>
+                              ))}
+                            </div>
                           </motion.li>
                         ))}
                       </AnimatePresence>
@@ -362,22 +442,22 @@ export default function UpgradePage() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedPlan(plan.id)}
+                      onClick={() => handleUpgrade(plan.id)}
+                      disabled={plan.id === '免费试用' || isCreatingOrder}
                       className={`w-full py-3.5 font-semibold rounded-2xl transition-all flex items-center justify-center gap-2 ${
-                        plan.id === 'enterprise'
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:shadow-purple-500/25'
+                        plan.id === '免费试用'
+                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                           : plan.isPopular
                           ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/25'
-                          : plan.id === 'free'
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      disabled={plan.id === 'free'}
+                          : plan.id === '企业版'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:shadow-purple-500/25'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg hover:shadow-emerald-500/25'
+                      } ${isCreatingOrder ? 'opacity-75 cursor-not-allowed' : ''}`}
                     >
-                      {plan.id === 'free' ? (
+                      {plan.id === '免费试用' ? (
                         '当前套餐'
-                      ) : plan.id === 'enterprise' ? (
-                        <>联系销售 <ArrowRight className="w-4 h-4" /></>
+                      ) : isCreatingOrder ? (
+                        <>创建订单中... <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /></>
                       ) : (
                         <>立即升级 <Zap className="w-4 h-4" /></>
                       )}
@@ -390,7 +470,8 @@ export default function UpgradePage() {
                   )}
                 </motion.div>
               </motion.div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Features Comparison */}
@@ -416,8 +497,8 @@ export default function UpgradePage() {
                   <TrendingUp className="w-6 h-6 text-white" />
                 </motion.div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">16倍积分提升</h3>
-                  <p className="text-sm text-gray-600">从 3,000 提升至 50,000 每日积分</p>
+                  <h3 className="font-semibold text-gray-900 mb-1">大幅提升使用限额</h3>
+                  <p className="text-sm text-gray-600">从 $10 提升至 $100 每日费用限额</p>
                 </div>
               </motion.div>
 
@@ -459,44 +540,6 @@ export default function UpgradePage() {
             </div>
           </motion.div>
 
-          {/* Testimonials */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.01 }}
-            transition={{ type: "spring", stiffness: 200 }}
-            className="bg-gradient-to-r from-orange-50 via-pink-50 to-purple-50 rounded-3xl border border-orange-100 p-8 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-200/30 to-pink-200/30 rounded-full -mr-32 -mt-32 blur-3xl" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                  </motion.div>
-                ))}
-                <span className="text-sm font-semibold text-gray-700 ml-2">4.9/5 用户评分</span>
-              </div>
-              <blockquote className="text-gray-700 text-lg leading-relaxed mb-4">
-                "升级到专业版后，我的开发效率提升了至少 50%。高级 AI 模型的代码建议质量非常高，
-                API 访问权限让我能够将 Claude Code 完美集成到现有工作流中。"
-              </blockquote>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                  L
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">李明</p>
-                  <p className="text-sm text-gray-600">全栈开发工程师</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
 
           {/* Trust Badges */}
           <motion.div

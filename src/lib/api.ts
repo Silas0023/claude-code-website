@@ -7,7 +7,7 @@ export interface ApiResponse<T> {
 
 export interface UserInfo {
   apiKey: string;
-  avatar: string;
+  avatar?: string;
   id: number;
   isSubscribed: number;
   nickname: string;
@@ -16,6 +16,24 @@ export interface UserInfo {
   subscribeEndTime: string;
   subscribeStartTime: string;
   subscribeType: string;
+  planName?: string;
+  subscriptionConfig?: {
+    id: number;
+    subscriptionType: string;
+    displayName: string;
+    description: string;
+    price: number;
+    validDays: number;
+    tokenLimit: number;
+    rateLimitWindow: number;
+    rateLimitRequests: number;
+    rateLimitCost: number | null;
+    concurrencyLimit: number;
+    dailyCostLimit: number;
+    weeklyOpusCostLimit: number;
+    permissions: string;
+    enabled: boolean;
+  };
 }
 
 export interface UserStats {
@@ -73,10 +91,10 @@ export interface UserStats {
 export interface LoginResponse {
   token: string;
   userInfo: UserInfo;
-  userStats: UserStats;
 }
 
 export interface SubscriptionPlan {
+  id?: number;
   allowedClients: string;
   concurrencyLimit: number;
   dailyCostLimit: number;
@@ -145,9 +163,9 @@ class ApiService {
 
   private getBaseUrl(): string {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('api_base_url') || 'http://192.168.110.193:8088';
+      return localStorage.getItem('api_base_url') || 'https://ai01.zjczwl.cn';
     }
-    return 'http://192.168.110.193:8088';
+    return 'https://ai01.zjczwl.cn';
   }
 
   setBaseUrl(url: string) {
@@ -213,6 +231,39 @@ class ApiService {
     return response.json();
   }
 
+  async getUserInfo(userId: string): Promise<ApiResponse<UserInfo>> {
+    const url = `${this.baseUrl}/api/claudeApi/userInfo/${userId}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  async getUserStats(userId: string): Promise<ApiResponse<UserStats>> {
+    const response = await fetch(`${this.baseUrl}/api/claudeApi/userStats/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async getUserModelStats(apiId: string, period: 'daily' | 'monthly' = 'monthly'): Promise<ModelStatsApiResponse> {
     const response = await fetch(`${this.baseUrl}/api/claudeApi/userModelStats`, {
       method: 'POST',
@@ -222,6 +273,36 @@ class ApiService {
       body: JSON.stringify({
         apiId,
         period,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async createOrder(subscriptionConfigId: number, type: 'alipay' | 'wxpay', userId: number): Promise<ApiResponse<{
+    orderId: number;
+    outTradeNo: string;
+    platformOrderNo: string;
+    productName: string;
+    amount: number;
+    paymentInfo: string;
+    paymentStatus: number;
+    orderStatus: number;
+    paymentUrl: string;
+  }>> {
+    const response = await fetch(`${this.baseUrl}/api/claudeApi/order/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        subscriptionConfigId,
+        type,
+        userId,
       }),
     });
 
