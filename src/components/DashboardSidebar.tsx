@@ -8,19 +8,12 @@ import {
   Terminal,
   LayoutDashboard,
   FileText,
-  MessageSquare,
-  CreditCard,
-  Film,
   Settings,
   HelpCircle,
   ChevronDown,
   ChevronRight,
-  Users,
-  Shield,
   BookOpen,
-  Zap,
   Star,
-  Gift,
   LogOut,
   Menu,
   X
@@ -80,46 +73,14 @@ export default function DashboardSidebar({
     },
     {
       label: '使用教程',
-      icon: <BookOpen className="w-5 h-5" />,
-      children: [
-        {
-          label: '官方文档',
-          href: '/dashboard/docs',
-          icon: <FileText className="w-4 h-4" />
-        },
-        {
-          label: '微信公众号',
-          href: '/dashboard/wechat',
-          icon: <MessageSquare className="w-4 h-4" />
-        },
-        {
-          label: '视频教程',
-          href: '/dashboard/videos',
-          icon: <Film className="w-4 h-4" />
-        }
-      ]
+      href: '/dashboard/tutorial',
+      icon: <BookOpen className="w-5 h-5" />
     },
     {
-      label: '会员中心',
+      label: '升级订阅',
+      href: '/dashboard/upgrade',
       icon: <Star className="w-5 h-5" />,
-      children: [
-        {
-          label: '升级订阅',
-          href: '/dashboard/upgrade',
-          icon: <Zap className="w-4 h-4" />,
-          badge: 'PRO'
-        },
-        {
-          label: '邀请好友',
-          href: '/dashboard/invite',
-          icon: <Users className="w-4 h-4" />
-        },
-        {
-          label: '优惠活动',
-          href: '/dashboard/offers',
-          icon: <Gift className="w-4 h-4" />
-        }
-      ]
+      badge: 'PRO'
     },
     {
       label: '设置',
