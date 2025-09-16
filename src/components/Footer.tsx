@@ -21,8 +21,8 @@ const footerLinks = {
     { label: '联系我们', href: '#contact' },
   ],
   法律: [
-    { label: '隐私政策', href: '#privacy' },
-    { label: '服务条款', href: '#terms' },
+    // { label: '隐私政策', href: '#privacy' },
+    // { label: '服务条款', href: '#terms' },
     { label: 'Cookie 政策', href: '#cookies' },
     { label: '许可证', href: '#license' },
   ],
