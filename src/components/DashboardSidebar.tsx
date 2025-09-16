@@ -39,12 +39,14 @@ interface DashboardSidebarProps {
   onLogout: () => void;
   isMobileMenuOpen?: boolean;
   setIsMobileMenuOpen?: (open: boolean) => void;
+  user?: any;
 }
 
 export default function DashboardSidebar({
   onLogout,
   isMobileMenuOpen = false,
-  setIsMobileMenuOpen = () => {}
+  setIsMobileMenuOpen = () => {},
+  user
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>(['使用教程']);
@@ -276,15 +278,46 @@ export default function DashboardSidebar({
         {/* User Section */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-500/10 dark:to-pink-500/10 rounded-xl p-3 mb-3">
+            {user && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">
+                      {user.userInfo?.phone ? user.userInfo.phone.charAt(0) : 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {user.userInfo?.phone ?
+                        user.userInfo.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') :
+                        '用户'
+                      }
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      ID: {user.userInfo?.id || user.userStats?.id || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">当前套餐</span>
-              <span className="text-xs font-bold text-orange-600 dark:text-orange-400">FREE</span>
+              <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                {user?.userInfo?.planName || 'FREE'}
+              </span>
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-              使用量: 1,234 / 2,000
+              使用量: {user?.userStats?.usage?.total?.requests || 0} / {user?.userStats?.limits?.requestLimit || '∞'}
             </div>
             <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-orange-500 to-pink-500" style={{ width: '62%' }} />
+              <div
+                className="h-full bg-gradient-to-r from-orange-500 to-pink-500"
+                style={{
+                  width: user?.userStats?.limits?.requestLimit ?
+                    `${Math.min((user?.userStats?.usage?.total?.requests || 0) / user.userStats.limits.requestLimit * 100, 100)}%` :
+                    '0%'
+                }}
+              />
             </div>
           </div>
 

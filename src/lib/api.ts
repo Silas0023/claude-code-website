@@ -145,9 +145,9 @@ class ApiService {
 
   private getBaseUrl(): string {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('api_base_url') || 'http://127.0.0.1:8088';
+      return localStorage.getItem('api_base_url') || 'http://192.168.110.193:8088';
     }
-    return 'http://127.0.0.1:8088';
+    return 'http://192.168.110.193:8088';
   }
 
   setBaseUrl(url: string) {
