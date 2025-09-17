@@ -173,13 +173,19 @@ export default function UpgradePage() {
       // 确定是否为热门套餐（专业版）
       const isPopular = plan.subscriptionType === '专业版';
 
+      // 根据订阅ID判断计费周期
+      const getPeriod = (id?: number) => {
+        if (id === 2) return '/周'
+        return '/月'
+      }
+
       const displayPlan = {
         id: plan.subscriptionType,
         name: plan.subscriptionType,
         icon: iconMap[plan.subscriptionType] || <Sparkles className="w-6 h-6" />,
         price: plan.monthlyPrice,
         originalPrice: undefined,
-        period: '/月',
+        period: getPeriod(plan.id),
         description: `💰 每日限额: $${plan.dailyCostLimit}`,
         gradient: gradientMap[plan.subscriptionType] || 'from-gray-400 to-gray-500',
         shadowColor: shadowMap[plan.subscriptionType] || 'shadow-gray-500/20',
@@ -558,7 +564,7 @@ export default function UpgradePage() {
             </div>
             <div className="flex items-center gap-2">
               <Heart className="w-5 h-5" />
-              <span className="text-sm font-medium">30天退款保证</span>
+              <span className="text-sm font-medium">30天协商退款保证</span>
             </div>
             <div className="flex items-center gap-2">
               <Cpu className="w-5 h-5" />

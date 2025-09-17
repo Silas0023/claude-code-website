@@ -18,7 +18,7 @@ const footerLinks = {
     { label: '关于我们', href: '#about' },
     { label: '团队', href: '#team' },
     { label: '职位', href: '#careers' },
-    { label: '联系我们', href: '#contact' },
+    { label: '联系我们', href: '/contact' },
   ],
   法律: [
     // { label: '隐私政策', href: '#privacy' },
@@ -46,7 +46,7 @@ export default function Footer() {
                 <Code2 className="w-8 h-8 text-orange-500" />
                 <Sparkles className="w-4 h-4 text-orange-400 absolute -top-1 -right-1" />
               </div>
-              <span className="text-xl font-bold">AI Code Mirror</span>
+              <span className="text-xl font-bold">Claude Code</span>
             </Link>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               让 AI 成为您的编程助手，提升开发效率
@@ -87,7 +87,7 @@ export default function Footer() {
         <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              © 2024 AI Code Mirror. 保留所有权利。
+              © 2024 Claude Code. 保留所有权利。
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-orange-500 transition-colors">

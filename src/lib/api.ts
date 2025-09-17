@@ -167,6 +167,12 @@ class ApiService {
     }
     return 'https://ai01.zjczwl.cn';
   }
+  // private getBaseUrl(): string {
+  //   if (typeof window !== 'undefined') {
+  //     return localStorage.getItem('api_base_url') || 'http://127.0.0.1:8088';
+  //   }
+  //   return 'http://127.0.0.1:8088';
+  // }
 
   setBaseUrl(url: string) {
     this.baseUrl = url;
@@ -179,6 +185,21 @@ class ApiService {
     // In a real application, you might want to get the actual client IP
     // For now, return a default value
     return '127.0.0.1';
+  }
+
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
   }
 
   async sendVerificationCode(phone: string): Promise<ApiResponse<string>> {
@@ -219,9 +240,7 @@ class ApiService {
   async getSubscriptionPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
     const response = await fetch(`${this.baseUrl}/api/claudeApi/subscriptionPlans`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -236,9 +255,7 @@ class ApiService {
 
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -252,9 +269,7 @@ class ApiService {
   async getUserStats(userId: string): Promise<ApiResponse<UserStats>> {
     const response = await fetch(`${this.baseUrl}/api/claudeApi/userStats/${userId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -267,9 +282,7 @@ class ApiService {
   async getUserModelStats(apiId: string, period: 'daily' | 'monthly' = 'monthly'): Promise<ModelStatsApiResponse> {
     const response = await fetch(`${this.baseUrl}/api/claudeApi/userModelStats`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify({
         apiId,
         period,
@@ -296,9 +309,7 @@ class ApiService {
   }>> {
     const response = await fetch(`${this.baseUrl}/api/claudeApi/order/create`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify({
         subscriptionConfigId,
         type,

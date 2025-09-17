@@ -95,6 +95,52 @@ export default function TutorialPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-50">
+          {/* API Key Display */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-lg mb-6 p-6 border border-blue-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                  <Code className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">您的 API Key</h3>
+                  <p className="text-sm text-gray-600">用于调用 Claude Code API 服务</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-lg px-4 py-2 border border-gray-200 font-mono text-sm text-gray-700 select-all">
+                  {user?.userInfo?.apiKey || '加载中...'}
+                </div>
+                <button
+                  onClick={() => handleCopyCode(user?.userInfo?.apiKey || '')}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md"
+                  disabled={!user?.userInfo?.apiKey}
+                >
+                  {copiedCode === user?.userInfo?.apiKey ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span className="hidden sm:inline">已复制</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span className="hidden sm:inline">复制</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            {/* <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium">重要提示：</p>
+                  <p>请妥善保管您的 API Key，不要在公开场所分享。如果需要重置，请访问 <a href="/dashboard/api-keys" className="text-blue-600 hover:underline">API 密钥管理</a> 页面。</p>
+                </div>
+              </div>
+            </div> */}
+          </div>
+
           {/* Tab Navigation */}
           <div className="bg-white rounded-2xl shadow-lg mb-6 p-2">
             <div className="flex flex-wrap gap-2">

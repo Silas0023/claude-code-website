@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,11 +19,38 @@ export default function Navigation() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    // 检查用户登录状态
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('token')
+      setIsLoggedIn(!!token)
+    }
+
+    // 初始检查
+    checkLoginStatus()
+
+    // 监听存储变化（当用户登录/登出时）
+    const handleStorageChange = () => {
+      checkLoginStatus()
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+
+    // 也可以监听自定义事件
+    window.addEventListener('auth-change', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('auth-change', handleStorageChange)
+    }
+  }, [])
+
   const navItems = [
     { href: '#features', label: '功能特点' },
     { href: '#how-it-works', label: '工作原理' },
     { href: '#pricing', label: '定价' },
     { href: '#faq', label: '常见问题' },
+    { href: '/contact', label: '联系我们' },
   ]
 
   return (
@@ -54,8 +82,11 @@ export default function Navigation() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/login" className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity">
-              立即试用
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/login"}
+              className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              {isLoggedIn ? "控制台" : "立即试用"}
             </Link>
           </div>
 
@@ -87,8 +118,11 @@ export default function Navigation() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/login" className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium w-full mt-4 text-center block">
-              立即试用
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/login"}
+              className="gradient-bg text-white px-6 py-2 rounded-full text-sm font-medium w-full mt-4 text-center block"
+            >
+              {isLoggedIn ? "控制台" : "立即试用"}
             </Link>
           </motion.div>
         )}

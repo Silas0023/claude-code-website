@@ -1,63 +1,203 @@
 "use client"
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Check, X, Star } from 'lucide-react'
+import { Check, X, Star, Loader2 } from 'lucide-react'
+import { apiService, SubscriptionPlan } from '@/lib/api'
+import Link from 'next/link'
 
-const plans = [
-  {
-    name: "免费版",
-    price: "¥0",
-    period: "/月",
-    description: "适合个人开发者和学习使用",
-    features: [
-      { text: "每月 1000 次代码生成", included: true },
-      { text: "基础代码补全", included: true },
-      { text: "支持 20+ 编程语言", included: true },
-      { text: "社区支持", included: true },
-      { text: "实时协作", included: false },
-      { text: "高级 AI 模型", included: false },
-      { text: "优先支持", included: false },
-    ],
-    cta: "免费开始",
-    popular: false
-  },
-  {
-    name: "专业版",
-    price: "¥99",
-    period: "/月",
-    description: "适合专业开发者和小团队",
-    features: [
-      { text: "无限次代码生成", included: true },
-      { text: "高级代码补全和重构", included: true },
-      { text: "支持 100+ 编程语言", included: true },
-      { text: "实时协作（最多 5 人）", included: true },
-      { text: "高级 AI 模型", included: true },
-      { text: "优先邮件支持", included: true },
-      { text: "私有代码仓库集成", included: false },
-    ],
-    cta: "立即升级",
-    popular: true
-  },
-  {
-    name: "企业版",
-    price: "定制",
-    period: "",
-    description: "适合大型团队和企业",
-    features: [
-      { text: "所有专业版功能", included: true },
-      { text: "无限团队成员", included: true },
-      { text: "私有部署选项", included: true },
-      { text: "自定义 AI 模型训练", included: true },
-      { text: "SSO 单点登录", included: true },
-      { text: "24/7 专属支持", included: true },
-      { text: "SLA 服务保障", included: true },
-    ],
-    cta: "联系销售",
-    popular: false
+interface PlanFeature {
+  text: string;
+  included: boolean;
+}
+
+interface ProcessedPlan {
+  id?: number;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: PlanFeature[];
+  cta: string;
+  popular: boolean;
+  subscriptionType: string;
+}
+
+const processSubscriptionPlan = (plan: SubscriptionPlan): ProcessedPlan => {
+  const features: PlanFeature[] = []
+
+  // 处理description，支持换行拆分显示
+  const descriptionLines = plan.description ? plan.description.split('\n').filter(line => line.trim()) : []
+  descriptionLines.forEach(line => {
+    const trimmedLine = line.trim()
+    if (trimmedLine) {
+      features.push({
+        text: trimmedLine,
+        included: true
+      })
+    }
+  })
+
+  // 如果description为空或没有换行，则使用默认的功能列表
+  if (features.length === 0) {
+    // 基于API数据生成功能列表
+    if (plan.tokenLimit > 0) {
+      features.push({
+        text: `每月 ${plan.tokenLimit.toLocaleString()} 个Token`,
+        included: true
+      })
+    }
+
+    if (plan.rateLimitRequests > 0) {
+      features.push({
+        text: `每${plan.rateLimitWindow}秒 ${plan.rateLimitRequests} 次请求`,
+        included: true
+      })
+    }
+
+    if (plan.concurrencyLimit > 0) {
+      features.push({
+        text: `最多 ${plan.concurrencyLimit} 个并发请求`,
+        included: true
+      })
+    }
+
+    if (plan.dailyCostLimit > 0) {
+      features.push({
+        text: `每日成本限制 $${plan.dailyCostLimit}`,
+        included: true
+      })
+    }
+
+    if (plan.weeklyOpusCostLimit > 0) {
+      features.push({
+        text: `每周Opus成本限制 $${plan.weeklyOpusCostLimit}`,
+        included: true
+      })
+    }
+
+    // 权限相关功能
+    const permissions = plan.permissions ? plan.permissions.split(',') : []
+    permissions.forEach(permission => {
+      const trimmedPermission = permission.trim()
+      if (trimmedPermission) {
+        features.push({
+          text: trimmedPermission,
+          included: true
+        })
+      }
+    })
+
+    // 模型限制
+    if (!plan.enableModelRestriction) {
+      features.push({
+        text: "支持所有AI模型",
+        included: true
+      })
+    }
   }
-]
+
+  // 获取第一行作为简短描述，剩余作为功能列表
+  const firstLine = plan.description?.split('\n')[0]?.trim() || '暂无描述'
+
+  // 根据订阅ID判断计费周期
+  const getPeriod = (id?: number, price: number) => {
+    if (price === 0) return ''
+    if (id === 2) return '/周'
+    return '/月'
+  }
+
+  return {
+    id: plan.id,
+    name: plan.subscriptionType || '未知方案',
+    price: plan.monthlyPrice > 0 ? `¥${plan.monthlyPrice}` : '¥0',
+    period: getPeriod(plan.id, plan.monthlyPrice),
+    description: firstLine,
+    features,
+    cta: plan.monthlyPrice > 0 ? '立即订阅' : '免费使用',
+    popular: plan.subscriptionType?.includes('专业') || plan.subscriptionType?.includes('Pro') || false,
+    subscriptionType: plan.subscriptionType || ''
+  }
+}
 
 export default function PricingSection() {
+  const [plans, setPlans] = useState<ProcessedPlan[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoading(true)
+        const response = await apiService.getSubscriptionPlans()
+
+        if (response.code === 200 && response.data) {
+          const processedPlans = response.data.map(processSubscriptionPlan)
+          setPlans(processedPlans)
+        } else {
+          setError('获取订阅方案失败')
+        }
+      } catch (err) {
+        console.error('Error fetching subscription plans:', err)
+        setError('网络错误，请稍后重试')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPlans()
+  }, [])
+
+  const handleSubscribe = (plan: ProcessedPlan) => {
+    // 检查用户是否已登录
+    const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('token')
+
+    if (!isLoggedIn) {
+      // 未登录，跳转到登录页面
+      window.location.href = '/login'
+      return
+    }
+
+    if (plan.subscriptionType === 'FREE' || plan.price === '¥0') {
+      // 免费方案，已登录则跳转到仪表板
+      window.location.href = '/dashboard'
+    } else {
+      // 付费方案，已登录则跳转到升级页面
+      window.location.href = '/dashboard/upgrade'
+    }
+  }
+
+  if (loading) {
+    return (
+      <section id="pricing" className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            <span className="ml-2 text-gray-600">正在加载订阅方案...</span>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section id="pricing" className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="text-center text-red-500">
+            <p className="mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-orange-500 hover:underline"
+            >
+              点击重试
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section id="pricing" className="py-20 relative">
       <div className="container mx-auto px-4">
@@ -79,7 +219,7 @@ export default function PricingSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <motion.div
-              key={index}
+              key={plan.id || index}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -94,7 +234,7 @@ export default function PricingSection() {
                   </div>
                 </div>
               )}
-              
+
               <div className={`bg-white/10 backdrop-blur-md border border-gray-200/20 dark:border-white/10 rounded-2xl p-8 h-full shadow-lg card-hover dark:bg-white/5 ${plan.popular ? 'ring-2 ring-orange-500 animate-pulse-glow' : ''}`}>
                 <div className="mb-8">
                   <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
@@ -120,11 +260,14 @@ export default function PricingSection() {
                   ))}
                 </ul>
 
-                <button className={`w-full py-3 rounded-full font-medium transition-all ${
-                  plan.popular 
-                    ? 'gradient-bg text-white hover:opacity-90' 
-                    : 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900'
-                }`}>
+                <button
+                  onClick={() => handleSubscribe(plan)}
+                  className={`w-full py-3 rounded-full font-medium transition-all ${
+                    plan.popular
+                      ? 'gradient-bg text-white hover:opacity-90'
+                      : 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900'
+                  }`}
+                >
                   {plan.cta}
                 </button>
               </div>
@@ -143,7 +286,7 @@ export default function PricingSection() {
             所有方案均包含 1 天免费试用，无需信用卡
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            需要更多信息？查看我们的 <a href="#faq" className="text-orange-500 hover:underline">常见问题</a>
+            需要更多信息？查看我们的 <Link href="#faq" className="text-orange-500 hover:underline">常见问题</Link>
           </p>
         </motion.div>
       </div>
