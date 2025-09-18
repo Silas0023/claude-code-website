@@ -16,6 +16,7 @@ import {
 interface TutorialProps {
   handleCopyCode: (code: string) => void;
   copiedCode: string | null;
+  apiKey?: string;
 }
 
 const CodeBlock = ({ code, handleCopyCode, copiedCode }: { code: string; handleCopyCode: (code: string) => void; copiedCode: string | null }) => (
@@ -70,8 +71,8 @@ const InfoBox = ({ type, children }: { type: 'tip' | 'warning'; children: React.
   </div>
 );
 
-export function WindowsTutorial({ handleCopyCode, copiedCode }: TutorialProps) {
-  const apiKey = "你的API密钥";
+export function WindowsTutorial({ handleCopyCode, copiedCode, apiKey }: TutorialProps) {
+  const actualApiKey = apiKey || "你的API密钥";
   const baseUrl = "https://claude.nnppn.cn/api";
 
   return (
@@ -161,13 +162,15 @@ npm install -g @anthropic-ai/claude-code`}
           <p className="text-gray-600 mb-2">在 PowerShell 中运行以下命令：</p>
           <CodeBlock
             code={`$env:ANTHROPIC_BASE_URL = "${baseUrl}"
-$env:ANTHROPIC_AUTH_TOKEN = "${apiKey}"`}
+$env:ANTHROPIC_AUTH_TOKEN = "${actualApiKey}"`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
           />
-          <InfoBox type="tip">
-            <p>💡 记得将 "{apiKey}" 替换为在上方 "API Keys" 标签页中创建的实际密钥。</p>
-          </InfoBox>
+          {!apiKey && (
+            <InfoBox type="tip">
+              <p>💡 记得将 "{actualApiKey}" 替换为在上方显示的实际API密钥。</p>
+            </InfoBox>
+          )}
         </div>
 
         <div className="mb-6">
@@ -176,7 +179,7 @@ $env:ANTHROPIC_AUTH_TOKEN = "${apiKey}"`}
           <CodeBlock
             code={`# 设置用户级环境变量（永久生效）
 [System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${baseUrl}", [System.EnvironmentVariableTarget]::User)
-[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "${apiKey}", [System.EnvironmentVariableTarget]::User)`}
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "${actualApiKey}", [System.EnvironmentVariableTarget]::User)`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
           />
@@ -230,8 +233,8 @@ cr_xxxxxxxxxxxxxxxxxx`}
   );
 }
 
-export function MacOSTutorial({ handleCopyCode, copiedCode }: TutorialProps) {
-  const apiKey = "你的API密钥";
+export function MacOSTutorial({ handleCopyCode, copiedCode, apiKey }: TutorialProps) {
+  const actualApiKey = apiKey || "你的API密钥";
   const baseUrl = "https://claude.nnppn.cn/api";
 
   return (
@@ -319,13 +322,15 @@ npm install -g @anthropic-ai/claude-code`}
           <p className="text-gray-600 mb-2">在 Terminal 中运行以下命令：</p>
           <CodeBlock
             code={`export ANTHROPIC_BASE_URL="${baseUrl}"
-export ANTHROPIC_AUTH_TOKEN="${apiKey}"`}
+export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
           />
-          <InfoBox type="tip">
-            <p>💡 记得将 "{apiKey}" 替换为在上方 "API Keys" 标签页中创建的实际密钥。</p>
-          </InfoBox>
+          {!apiKey && (
+            <InfoBox type="tip">
+              <p>💡 记得将 "{actualApiKey}" 替换为在上方显示的实际API密钥。</p>
+            </InfoBox>
+          )}
         </div>
 
         <div className="mb-6">
@@ -335,7 +340,7 @@ export ANTHROPIC_AUTH_TOKEN="${apiKey}"`}
           <p className="text-gray-700 font-medium mt-4 mb-2">对于 zsh (默认)：</p>
           <CodeBlock
             code={`echo 'export ANTHROPIC_BASE_URL="${baseUrl}"' >> ~/.zshrc
-echo 'export ANTHROPIC_AUTH_TOKEN="${apiKey}"' >> ~/.zshrc
+echo 'export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"' >> ~/.zshrc
 source ~/.zshrc`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
@@ -344,7 +349,7 @@ source ~/.zshrc`}
           <p className="text-gray-700 font-medium mt-4 mb-2">对于 bash：</p>
           <CodeBlock
             code={`echo 'export ANTHROPIC_BASE_URL="${baseUrl}"' >> ~/.bash_profile
-echo 'export ANTHROPIC_AUTH_TOKEN="${apiKey}"' >> ~/.bash_profile
+echo 'export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"' >> ~/.bash_profile
 source ~/.bash_profile`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
@@ -372,8 +377,8 @@ cr_xxxxxxxxxxxxxxxxxx`}
   );
 }
 
-export function LinuxTutorial({ handleCopyCode, copiedCode }: TutorialProps) {
-  const apiKey = "你的API密钥";
+export function LinuxTutorial({ handleCopyCode, copiedCode, apiKey }: TutorialProps) {
+  const actualApiKey = apiKey || "你的API密钥";
   const baseUrl = "https://claude.nnppn.cn/api";
 
   return (
@@ -470,13 +475,15 @@ npm install -g @anthropic-ai/claude-code`}
           <p className="text-gray-600 mb-2">在终端中运行以下命令：</p>
           <CodeBlock
             code={`export ANTHROPIC_BASE_URL="${baseUrl}"
-export ANTHROPIC_AUTH_TOKEN="${apiKey}"`}
+export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
           />
-          <InfoBox type="tip">
-            <p>💡 记得将 "{apiKey}" 替换为在上方 "API Keys" 标签页中创建的实际密钥。</p>
-          </InfoBox>
+          {!apiKey && (
+            <InfoBox type="tip">
+              <p>💡 记得将 "{actualApiKey}" 替换为在上方显示的实际API密钥。</p>
+            </InfoBox>
+          )}
         </div>
 
         <div className="mb-6">
@@ -486,7 +493,7 @@ export ANTHROPIC_AUTH_TOKEN="${apiKey}"`}
           <p className="text-gray-700 font-medium mt-4 mb-2">对于 bash (默认)：</p>
           <CodeBlock
             code={`echo 'export ANTHROPIC_BASE_URL="${baseUrl}"' >> ~/.bashrc
-echo 'export ANTHROPIC_AUTH_TOKEN="${apiKey}"' >> ~/.bashrc
+echo 'export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"' >> ~/.bashrc
 source ~/.bashrc`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}
@@ -495,7 +502,7 @@ source ~/.bashrc`}
           <p className="text-gray-700 font-medium mt-4 mb-2">对于 zsh：</p>
           <CodeBlock
             code={`echo 'export ANTHROPIC_BASE_URL="${baseUrl}"' >> ~/.zshrc
-echo 'export ANTHROPIC_AUTH_TOKEN="${apiKey}"' >> ~/.zshrc
+echo 'export ANTHROPIC_AUTH_TOKEN="${actualApiKey}"' >> ~/.zshrc
 source ~/.zshrc`}
             handleCopyCode={handleCopyCode}
             copiedCode={copiedCode}

@@ -183,13 +183,13 @@ export default function TutorialPage() {
           {/* Tutorial Content */}
           <AnimatePresence mode="wait">
             {activeTab === 'windows' && (
-              <WindowsTutorial key="windows" handleCopyCode={handleCopyCode} copiedCode={copiedCode} />
+              <WindowsTutorial key="windows" handleCopyCode={handleCopyCode} copiedCode={copiedCode} apiKey={user?.userInfo?.apiKey} />
             )}
             {activeTab === 'macos' && (
-              <MacOSTutorial key="macos" handleCopyCode={handleCopyCode} copiedCode={copiedCode} />
+              <MacOSTutorial key="macos" handleCopyCode={handleCopyCode} copiedCode={copiedCode} apiKey={user?.userInfo?.apiKey} />
             )}
             {activeTab === 'linux' && (
-              <LinuxTutorial key="linux" handleCopyCode={handleCopyCode} copiedCode={copiedCode} />
+              <LinuxTutorial key="linux" handleCopyCode={handleCopyCode} copiedCode={copiedCode} apiKey={user?.userInfo?.apiKey} />
             )}
           </AnimatePresence>
         </main>
